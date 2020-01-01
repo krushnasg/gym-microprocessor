@@ -35,9 +35,11 @@ class Core():
     
 
 class Task():
-    newid = next(itertools.count())
-    def __init__(self, instructionCount,arrivalTime, deadlineTime):
+    newid = itertools.count()
+    def __init__(self, instructionCount,arrivalTime, deadlineTime, newSet=False):
         self.instructionCount = instructionCount
         self.arrivalTime = arrivalTime
         self.deadlineTime = deadlineTime
-        self.taskID = self.newid
+        if (newSet):
+            Task.newid = itertools.count(0)
+        self.taskID = next(Task.newid)
