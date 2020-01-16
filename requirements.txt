@@ -147,7 +147,7 @@ traitlets==4.3.2
 Twisted==19.2.0
 typing==3.6.6
 Unidecode==1.0.23
-urllib3==1.24
+urllib3==1.24.2
 w3lib==1.20.0
 warcio==1.6.3
 wasabi==0.2.1
