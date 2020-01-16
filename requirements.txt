@@ -115,7 +115,7 @@ pytest==3.9.3
 python-dateutil==2.7.5
 python-utils==2.3.0
 pytz==2018.7
-PyYAML==3.13
+PyYAML==5.1
 queuelib==1.5.0
 readability-lxml==0.7
 requests==2.20.0
