@@ -15,16 +15,20 @@ class ProcessorEnv():
         #   action[1] indicates the frequency Mode
         #   action[2] indicates the startTime overhead after allocation
         self.action_space = spaces.Box(low=np.array([0,1,0]), high=np.array([self.processor.numCores-1, len(self.processor.cores[0].ipc)-1, 5]), dtype=np.int32)
-        print(self.action_space.high)
+        #Observation is a 3xn matrix, where n is the number of cores
+        #It represents Temperature, Frequency Mode and the Time unti which a core is occupied.
         self.observation_space = spaces.Box(low=0, high=80, shape=(3,self.processor.numCores), dtype=np.int32)
 
+    #A function to generate a random task
     def _generateRandomTask(self, newSet=False):
-        instructionCount = np.random.randint(100)
-        arrivalTime = self.time + np.random.randint(5)
+        instructionCount = np.random.randint(100) # Instruction count of each task is a random integer between 0 and 100
+        arrivalTime = self.time + np.random.randint(5) # Arrival Time is a random time between current time and current time + 5 units
+        # Deadline time is minimum execution time + arrival time + a random integer between 0 and 10
         deadlineTime = arrivalTime + (instructionCount//self.processor.cores[0].ipc[-1]) + np.random.randint(10)
         return Task(instructionCount,arrivalTime,deadlineTime,newSet)
 
     def _temperatureConstraintsSatisfied(self, core, startTime, executionTime, freqMode):
+        #returns true if temperature at the end of the allocated task execution stays below the critical temperature(Tsafe)
         return (max((core.temperature 
                             + core.temperatureIncrememtRate[0]*max(0,startTime - core.occupiedTill)),
                         ROOM_TEMPERATURE) 
@@ -33,6 +37,7 @@ class ProcessorEnv():
                 )
 
     def _timeConstraintsSatisfied(self, core, startTime, executionTime, freqMode):
+        #returns true if the task execution is feasible at the current freqMode within its deadline time
         return ((startTime > self.upcomingTask.arrivalTime) and 
                 (startTime + executionTime <= self.upcomingTask.deadlineTime)
                 )
@@ -51,6 +56,7 @@ class ProcessorEnv():
         executionTime = math.ceil(self.upcomingTask.instructionCount/core.ipc[freqMode])
         startTime = max(core.occupiedTill, self.upcomingTask.arrivalTime) + startTimeOverhead
         endTime = startTime + executionTime
+
         #Check if the allocation is feasible
         if not (self._temperatureConstraintsSatisfied(core, startTime, executionTime, freqMode) and 
             self._timeConstraintsSatisfied(core, startTime, executionTime, freqMode)):
@@ -74,7 +80,9 @@ class ProcessorEnv():
 
 
     def reset(self):
+        #reset the environment
         self.time=0
+        #reset each core
         for c in self.processor.cores:
             c.reset() 
         self.upcomingTask = self._generateRandomTask(newSet=True)
@@ -89,10 +97,15 @@ class ProcessorEnv():
         allocatedCoreID = int(action[0])
         freqMode = int(action[1])
         startTimeOverhead = int(action[2])
+
+        #allocate the task to proper core based on action
         done, reward = self._allocateTask(allocatedCoreID, freqMode, startTimeOverhead)
+        #get observation(next state)
         observation = self._getObservation()
 
+        #update the current time
         self.time = self.upcomingTask.arrivalTime
+        #get next task
         self.upcomingTask = self._generateRandomTask()
         return observation, reward, done, {}
         
