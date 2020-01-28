@@ -136,7 +136,7 @@ srsly==0.0.5
 stable-baselines==2.8.0
 TA-Lib==0.4.18
 tensorboard==1.11.0
-tensorflow==1.11.0
+tensorflow==1.15.2
 termcolor==1.1.0
 tf-metrics==0.0.1
 thinc==7.0.4
