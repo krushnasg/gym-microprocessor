@@ -31,14 +31,8 @@ class Core():
         self.freqMode = 0
         self.occupiedTill = 0
 
-    def allocateTask(self, task, freqMode, startTime=None): #Function not in use
-        if startTime is None:
-            startTime = task.arrivalTime
-        pass
-    
-
 class Task():
-    newid = itertools.count() #for auto incrementing the task ids
+    newid = itertools.count(0) #for auto incrementing the task ids
     def __init__(self, instructionCount,arrivalTime, deadlineTime, newSet=False):
         self.instructionCount = instructionCount
         self.arrivalTime = arrivalTime
