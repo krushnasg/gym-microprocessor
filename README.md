@@ -36,11 +36,12 @@ Now that we have the virtual environment ready, we activate it using:
 $ workon rl
 ```
 
-All the required dependencies for running this project are present in the file ```requirements.txt```.
-The dependencies can be installed using:
-```
-$ pip install -r requirements.txt
-```
+We majorly need ```stable-baselines``` and ```gym```. The installation procedure for these can be folleowed using the links below:
+[stable-baselines installation] (https://stable-baselines.readthedocs.io/en/master/guide/install.html)
+[gym installation] (https://github.com/openai/gym)
+
+Besides these, our dependencies include numpy, csv and matplotlib
+
 ## Step #3: Understanding the workflow of the project
 The directory structure of the project is as follows:
 ```
