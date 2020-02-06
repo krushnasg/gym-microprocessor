@@ -22,14 +22,24 @@ class Core():
         #NOTE: temperature increment is considered linear for now.
         self.temperature = ROOM_TEMPERATURE #core temperature, initialised to room temperature
         self.freqMode = 0
+        self.temperatureVariation = self.temperatureIncrememtRate[self.freqMode]
         self.occupiedTill = 0   #after a task allocation of a task to a particular core, 
                                 #the core will stay occupied until the task finishes execution, and 
                                 #no new task can be allocated to this core in the meantime.
     
     def reset(self): #function to reset the core 
         self.temperature = ROOM_TEMPERATURE
-        self.freqMode = 0
+        self.switchMode(0)
         self.occupiedTill = 0
+        return 
+    
+    def switchMode(self, mode):
+        # print ("call hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" + str(self.coreID) +"\t" + str(mode) + "\t" + str(self.freqMode))
+        self.freqMode = mode
+        self.temperatureVariation = self.temperatureIncrememtRate[mode]
+        #NOTE: power consumption to be added
+        return
+
 
 class Task():
     newid = itertools.count(0) #for auto incrementing the task ids
