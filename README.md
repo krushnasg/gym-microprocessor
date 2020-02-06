@@ -37,8 +37,8 @@ $ workon rl
 ```
 
 We majorly need ```stable-baselines``` and ```gym```. The installation procedure for these can be folleowed using the links below:
-[stable-baselines installation] (https://stable-baselines.readthedocs.io/en/master/guide/install.html)
-[gym installation] (https://github.com/openai/gym)
+[stable-baselines installation](https://stable-baselines.readthedocs.io/en/master/guide/install.html)
+[gym installation](https://github.com/openai/gym)
 
 Besides these, our dependencies include numpy, csv and matplotlib
 
