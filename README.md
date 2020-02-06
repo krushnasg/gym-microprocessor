@@ -43,6 +43,7 @@ $ pip install -r requirements.txt
 ```
 ## Step #3: Understanding the workflow of the project
 The directory structure of the project is as follows:
+```
 .
 ├── data
 │   └── example.xlsx
@@ -58,7 +59,7 @@ The directory structure of the project is as follows:
 ├── README.md
 ├── requirements.txt
 └── setup.py
-
+```
 The training algorithm is driven by file ```main.py```.
 The directory ```gym_microprocessor``` contains the folder ```envs```, which has two important files:
 1. ```processor.py``` contains the classes for Processor, Core, and Task. These essentially define the working of each of these entities.
