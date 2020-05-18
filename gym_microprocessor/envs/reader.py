@@ -1,17 +1,17 @@
 import pandas as pd
 import numpy as np
-from .processor import Task
+from .processor import Task,ROOM_TEMPERATURE,SAFE_TEMPERATURE, IPC
 import matplotlib.pyplot as plt  
 
 class Reader:
     def __init__(self):
         pass
 
-    def getTaskList(taskFile):
-        df = pd.read_excel(taskFile,header=0,index_col=None,dtype=float)
+    def getTaskList(taskFile, processor):
+        df = pd.read_csv(taskFile,header=0,index_col=None)
         taskList = []
         for index,row in df.iterrows():
-            taskList.append(Task(row[0],row[1],row[2]))
+            taskList.append([row[3],row[4],index])
         return taskList
 
     def graph(formula, low, high): 
