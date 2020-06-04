@@ -22,7 +22,13 @@ class ProcessorEnv():
         #   action[1] indicates the frequency Mode
         #   action[2] indicates the startTime overhead after allocation
         self.action_space = spaces.Box(low=np.array([-1,1]), high=np.array([self.processor.numCores-1, len(self.processor.cores[0].ipc)-1]), dtype=np.int32)
-
+        
+        #FOR DQN:
+        #0: No action
+        #1: Core0, LOW
+        #2: Core0, HIGH
+        #So on....
+        self.action_space = spaces.Discrete(1 + self.processor.numCores*(len(self.processor.cores[0].ipc)-1))
         #Observation is a 3xn matrix, where n is the number of cores
         #It represents Temperature, Frequency Mode and the Time unti which a core is occupied.
         # self.observation_space = spaces.Box(low=0, high=80, shape=(3,self.processor.numCores), dtype=np.int32)
@@ -63,6 +69,7 @@ class ProcessorEnv():
         self.ep_instr = []
         self.ep_delay_per_task = []
         self.ep_power_saved = []
+        self.ep_power_per_instr = []
 
     
     def _getNextTask(self,newSet=False):
@@ -95,7 +102,7 @@ class ProcessorEnv():
         Temp_min = SAFE_TEMPERATURE+1
         for c in self.processor.cores:
             if (Temp_min > c.temperature):
-                Temp_min = c.temperature
+                Temp_min = c.temperature + c.temperatureVariation * (max(0,c.occupiedTill - self.time))
                 minCore = c
         v = c.ipc[-1]*(SAFE_TEMPERATURE - Temp_min)/c.temperatureIncrementRate[-1]
         instructionCount = np.random.randint(max(5,v)) + 1 # Instruction count of each task is a random integer between 0 and 100
@@ -141,7 +148,7 @@ class ProcessorEnv():
         return True
 
     def _roundoff(self, num):
-        return int(num)
+        # return int(num)
         if (num%5 > 2):
             return num - (num%5) + 5
         else:
@@ -160,7 +167,7 @@ class ProcessorEnv():
         observation = np.zeros(shape=(6,self.processor.numCores), dtype=np.int32)
         observation[0,:] = np.array([self._roundoff(c.temperature) for c in self.processor.cores])
         observation[1,:] = np.array([c.freqMode for c in self.processor.cores])
-        observation[2,:] = np.array([c.occupiedTill for c in self.processor.cores])
+        observation[2,:] = np.array([max(0,c.occupiedTill - self.time) for c in self.processor.cores])
         #Define upcomig task as an array consisting of instruction count and the deadline time
        
         if(self.upcomingTask == None):
@@ -169,11 +176,11 @@ class ProcessorEnv():
             # task = np.array([0,0])
         else:
             observation[3,:] = np.full((1,self.processor.numCores), self._roundoff(self.upcomingTask.instructionCount))
-            observation[4,:] = np.full((1,self.processor.numCores), self.upcomingTask.deadlineTime)
+            observation[4,:] = np.full((1,self.processor.numCores), self.upcomingTask.deadlineTime - self.time)
             # task = np.array(self.upcomingTask.instructionCount, self.upcomingTask.deadlineTime)
         
         #Define time in the form of numpy array
-        observation[5,:] = np.full((1,self.processor.numCores), self.time)
+        observation[5,:] = np.full((1,self.processor.numCores), self.time - self.time)
         # t = np.array([self.time])
         #Define observation as a dictionary composed of above 3 items
         # observation = {"time": t, "core_prop": core_prop, "upcomingTask": task}
@@ -218,9 +225,19 @@ class ProcessorEnv():
     
 
     def _getReward(self, action):
-        #EXPT6 
+        # #EXPT9
+        # if (action[0] == -1 or self.upcomingTask == None):
+        #     return 0
+        # core = self.processor.cores[int(action[0])]
+        # # reward for valid allocation
+        # if core.occupiedTill <= self.time:
+        #     return self.upcomingTask.instructionCount
+        # else:
+        #     return 0
 
-        # 0 reward for no action
+            
+        
+        # EXPT8
         if (action[0] == -1 or self.upcomingTask == None):
             if self.upcomingTask is not None:
                 return (self.upcomingTask.arrivalTime - self.time)*10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
@@ -254,30 +271,77 @@ class ProcessorEnv():
                                   )
                                   
                 power_component = 10 * power_saved/max(max_power_save,10)
-            reward  = temp_component + power_component + deadline_penalty * 10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
+            beta = (core.temperature - ROOM_TEMPERATURE)/(SAFE_TEMPERATURE - ROOM_TEMPERATURE)
+            reward  = beta * temp_component + (1-beta)*power_component + deadline_penalty * 10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
 
             return reward
         else:
             return (self.upcomingTask.arrivalTime - self.time)*10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
 
+        #EXPT6 
 
-        #EXPT3
         # # 0 reward for no action
         # if (action[0] == -1 or self.upcomingTask == None):
-        #     return 0
+        #     if self.upcomingTask is not None:
+        #         return (self.upcomingTask.arrivalTime - self.time)*10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
+        #     else:
+        #         return 0
         # # print('nonero')
         # core = self.processor.cores[int(action[0])]
         # # reward for valid allocation
         # if core.occupiedTill <= self.time:
         #     executionTime = math.ceil(self.upcomingTask.instructionCount/core.ipc[int(action[1])])
-        #     deadline_penalty = min(0,10*(self.upcomingTask.deadlineTime - (self.time + executionTime)))
+        #     estimated_temp = core.temperature + core.temperatureVariation*executionTime
+        #     deadline_penalty = min(0,1*(self.upcomingTask.deadlineTime - (self.time + executionTime)))
         #     overhead = core.switchingOverhead[core.freqMode][int(action[1])]
-        #     power_penalty = overhead + executionTime * core.powerIncrementRate[int(action[1])]
-        #     reward = 2 * self.upcomingTask.instructionCount + deadline_penalty - power_penalty
+        #     power_penalty = ((self.time - self.upcomingTask.arrivalTime)*core.powerVariation #Power consumed before starting of execution 
+        #                     + executionTime * core.powerIncrementRate[int(action[1])] # power consumed during execution
+        #                     +(max(0,self.upcomingTask.deadlineTime - self.time - executionTime) * core.powerIncrementRate[0]) #power consumed after execution
+        #                     + overhead) # switching overhead
+        #     power_saved = (self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime) * core.powerIncrementRate[-1] - power_penalty
+        #     # reward = 2 * self.upcomingTask.instructionCount + deadline_penalty - power_penalty
+        #     #Temperature component on a scale of 0-10
+        #     temp_component = 10 * (self.processor.Tsafe - estimated_temp)/(self.processor.Tsafe - ROOM_TEMPERATURE)
+        #     #Power component on a scale of 0-10
+        #     power_component = 0
+        #     if power_saved != 0:
+        #         max_power_save = (power_saved 
+        #                           + power_penalty 
+        #                           - (self.time - self.upcomingTask.arrivalTime)*core.powerVariation
+        #                           - (math.ceil(self.upcomingTask.instructionCount/core.ipc[1])) * core.powerIncrementRate[1]
+        #                           - (max(0,self.upcomingTask.deadlineTime - self.time - math.ceil(self.upcomingTask.instructionCount/core.ipc[1]))) * core.powerIncrementRate[0]
+        #                           - core.switchingOverhead[core.freqMode][1]
+        #                           )
+                                  
+        #         power_component = 10 * power_saved/max(max_power_save,10)
+        #     reward  = temp_component + power_component + deadline_penalty * 10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
 
         #     return reward
         # else:
-        #     return -1
+        #     return (self.upcomingTask.arrivalTime - self.time)*10/(self.upcomingTask.deadlineTime - self.upcomingTask.arrivalTime)
+
+
+        #EXPT3
+        # 0 reward for no action
+        if (action[0] == -1 or self.upcomingTask == None):
+            return 0
+        # print('nonero')
+        core = self.processor.cores[int(action[0])]
+        # reward for valid allocation
+        if core.occupiedTill <= self.time:
+            executionTime = math.ceil(self.upcomingTask.instructionCount/core.ipc[int(action[1])])
+            deadline_penalty = min(0,10*(self.upcomingTask.deadlineTime - (self.time + executionTime)))
+            overhead = core.switchingOverhead[core.freqMode][int(action[1])]
+            power_penalty = overhead + executionTime * core.powerIncrementRate[int(action[1])]
+            max_overhead = 0
+            for m in range(len(core.powerIncrementRate)):
+                max_overhead = max(core.switchingOverhead[core.freqMode][m],max_overhead)
+            max_power = executionTime * core.powerIncrementRate[-1] + max_overhead
+            reward = max_power + deadline_penalty - power_penalty
+
+            return reward
+        else:
+            return -1
 
         #EXPT1
         # if not (self._temperatureConstraintsSatisfied() and self._timeConstraintsSatisfied()):
@@ -390,7 +454,7 @@ class ProcessorEnv():
                 delayPerTask += max(0,t['End_time'] - t['Deadline_time'])
             if not len(info[0]['info']) == 0:
                 delayPerTask = delayPerTask/len(info[0]['info']) == 0 
-            runtime = observation[5][0]
+            runtime = self.time
             powerSaved = 0
             for c in self.processor.cores:
                 powerSaved += runtime * c.powerIncrementRate[-1]
@@ -398,6 +462,7 @@ class ProcessorEnv():
             powerSaved = powerSaved/runtime
             self.ep_instr.append(totalInstr)
             self.ep_power_saved.append(powerSaved)
+            self.ep_power_per_instr.append(self.power_consumed/(totalInstr+1))
             self.ep_delay_per_task.append(delayPerTask)
 
     def seed(self, seed=None):
@@ -416,13 +481,13 @@ class ProcessorEnv():
         for c in self.processor.cores:
             c.temperature = np.random.randint(ROOM_TEMPERATURE,SAFE_TEMPERATURE)
             c.switchMode(np.random.randint(3))
-            c.occupiedTill = 0
+            c.occupiedTill = np.random.randint(max(1,min((SAFE_TEMPERATURE - c.temperature - 1)//c.temperatureVariation, 10)))
         self.power_consumed = 0
         # self.upcomingTask = self._getNextTask(newSet=True)
         self.allocation_output =  []
         observation = self._getObservation()
         self.rewards = []
-        return observation
+        # return observation
 
 
         #reset the environment...For testing
@@ -443,6 +508,11 @@ class ProcessorEnv():
         return observation
     
     def step(self, action):
+        #FOR DQN:
+        if action == 0:
+            action = [-1,1]
+        else:
+            action = [(action-1)//2,(action+1)%2 + 1]
         #action is a 3-tuple where,
         #   action[0] indicates coreID, 
         #   action[1] indicates the frequency Mode
@@ -484,13 +554,13 @@ class ProcessorEnv():
                 done = True
         
         self._monitor(observation, reward, done,[{'info':self.allocation_output}])
-        return observation, reward, done, {'info':self.allocation_output}
+        return observation, reward, done, {'info':self.allocation_output, 'power_consumed': self.power_consumed}
         
     def render(self, mode='human'):
         # if (self.time == len(self.tempRec)):
         # print (self.time, len(self.tempRec[0]))
-        if (self.time == len(self.tempRec[0])):
-            self._recordTemperature()
+        # if (self.time == len(self.tempRec[0])):
+        self._recordTemperature()
         observation = self._getObservation()
         rows = ['Temperature', 'Freq Mode', 'Occupied Till', 'Instruction Count', 'Deadline time', 'Current time']
         columns = [f'Core-{i}' for i in range(self.processor.numCores)]

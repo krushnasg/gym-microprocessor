@@ -8,11 +8,12 @@ import matplotlib.pyplot as plt
 from gym_microprocessor.envs.microprocessor_env import ProcessorEnv
 
 from stable_baselines.common.policies import MlpPolicy
+# from stable_baselines.deepq import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines.bench import Monitor
 from stable_baselines.results_plotter import load_results, ts2xy
-from stable_baselines import PPO2
-from stable_baselines.ddpg import AdaptiveParamNoiseSpec
+from stable_baselines import PPO2, DQN
+# from stable_baselines.ddpg import AdaptiveParamNoiseSpec
 from stable_baselines import results_plotter
 
 from stable_baselines.common.callbacks import BaseCallback
@@ -72,6 +73,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
           y=y[0]
           ep_len = ep_len[0]
           ep_power_saved = self.env.get_attr('ep_power_saved')[0]
+          ep_power_per_instr = self.env.get_attr('ep_power_per_instr')[0]
           ep_delay_per_task = self.env.get_attr('ep_delay_per_task')[0]
           ep_instr = self.env.get_attr('ep_instr')[0]
           if len(y) > 0:
@@ -80,10 +82,12 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
               mean_episode_length = np.mean(ep_len[-100:])
               mean_delay_per_task = np.mean(ep_delay_per_task[-100:])
               mean_power_saved = np.mean(ep_power_saved[-100:])
+              mean_power_per_instr = np.mean(ep_power_per_instr[-100:])
               mean_episode_instr =np.mean(ep_instr[-100:])
               wandb.log({"mean_reward": mean_reward,
                          "mean_episode_length": mean_episode_length, 
                          "mean_power_saved": mean_power_saved,
+                         "mean_power_per_instr": mean_power_per_instr,
                          "mean_delay_per_task" : mean_delay_per_task,
                          "mean_episode_instr": mean_episode_instr})
 
@@ -109,13 +113,13 @@ os.makedirs(log_dir, exist_ok=True)
 models_dir = "models/"
 os.makedirs(models_dir, exist_ok=True)
 
-model_name = 'ppo2_microprocessor_oldsettings_3'
-learning_rate = float(2.5 * 1e-6)
+model_name = 'ppo2_resetnew_1_expt8_CONT_resetnew'
+learning_rate = float(1 * 1e-5)
 time_steps = int(1e7)
 
 wandb.config.model_name = model_name
 wandb.config.learning_rate = learning_rate
-wand.config.time_steps = time_steps
+wandb.config.time_steps = time_steps
 
 # Create and wrap the environment
 env =  DummyVecEnv([lambda: ProcessorEnv()])
@@ -129,7 +133,7 @@ env =  DummyVecEnv([lambda: ProcessorEnv()])
 
 # Because we use parameter noise, we should use a MlpPolicy with layer normalization
 if (resume):
-    model = PPO2.load("tmp/best_model")
+    model = PPO2.load(models_dir + "ppo2_resetnew_noroundoff_1_expt8")
     model.set_env(env)
     print("RESUMED")
 else:
