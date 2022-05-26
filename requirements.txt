@@ -171,7 +171,7 @@ tldextract==2.2.1
 tornado==6.0.3
 tqdm==4.28.1
 traitlets==4.3.2
-Twisted==19.10.0
+Twisted==22.4.0
 typing==3.6.6
 Unidecode==1.0.23
 urllib3==1.25.8
