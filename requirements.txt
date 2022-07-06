@@ -59,7 +59,7 @@ grpcio==1.16.0
 gym==0.15.4
 h5py==2.8.0
 hjson==3.0.1
-html5lib==0.9999999
+html5lib==0.999999999
 hurry.filesize==0.9
 hyperlink==19.0.0
 idna==2.7
